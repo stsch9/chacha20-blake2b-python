@@ -22,6 +22,25 @@ class TestChacha20Blake2b(unittest.TestCase):
         plaintext = caead.decrypt(nonce, ciphertext, tag)
         self.assertEqual(plaintext, b'')
 
+    def test_encryption_2(self):
+        plaintext = b''
+        nonce = bytes.fromhex('000000000000000000000000')
+        key = bytes.fromhex('1001000000000000000000000000000000000000000000000000000000000000')
+        aad = bytes.fromhex('76312e302e30')
+        caead = ChaCha20Blake2b(key)
+        nonce, ciphertext, tag = caead.encrypt(plaintext=plaintext, aad=aad, nonce=nonce)
+        self.assertEqual(ciphertext + tag, bytes.fromhex('c0deb4501fe4cc651687cff8c9f5377072d4788cfe2d0f51dd97fab7b16fab84'))
+
+    def test_decryption_2(self):
+        with self.assertRaises(Exception):
+            nonce = bytes.fromhex('000000000000000000000000')
+            key = bytes.fromhex('1002000000000000000000000000000000000000000000000000000000000000')
+            ciphertext_tag = bytes.fromhex('408319762a72faf302e6d34c2f882c27addc1b2130549e55a084bcdc189c2da0497fdbab20989f24a25f2d3934ac825caaf46ec61a853a06eb97b14c2ced147b94c2223506862d32af0be2b1f658597412e65d77560844eee38a190063300c8e8a8c62ea25b943b3')
+            ciphertext = ciphertext_tag[:len(ciphertext_tag) - T_LEN]
+            tag = ciphertext_tag[-T_LEN:]
+            caead = ChaCha20Blake2b(key)
+            plaintext = caead.decrypt(nonce, ciphertext, tag)
+
 
 if __name__ == '__main__':
     unittest.main()
