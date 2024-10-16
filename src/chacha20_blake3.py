@@ -1,14 +1,15 @@
-from pysodium import randombytes, crypto_generichash, crypto_stream_chacha20_ietf_xor,\
+from pysodium import randombytes, crypto_stream_chacha20_ietf_xor,\
     crypto_stream_chacha20_ietf_KEYBYTES, crypto_stream_chacha20_ietf_NONCEBYTES
+from blake3 import blake3
 from typing import Optional
 from hmac import compare_digest
 
 
-class ChaCha20Blake2b(object):
+class ChaCha20Blake3(object):
     KEY_SIZE = crypto_stream_chacha20_ietf_KEYBYTES
     NONCE_SIZE = crypto_stream_chacha20_ietf_NONCEBYTES
     ENCRYPTION_CONTEXT = b"ChaCha20.Encrypt()"
-    MAC_CONTEXT = b"BLAKE2b-256.KeyedHash()"
+    MAC_CONTEXT = b"BLAKE3-256.KeyedHash()"
 
     def __init__(self, key: bytes):
         if not isinstance(key, bytes):
@@ -39,15 +40,15 @@ class ChaCha20Blake2b(object):
                 "The nonce must be exactly %s bytes long" % self.NONCE_SIZE,
             )
 
-        encryption_key = crypto_generichash(self.ENCRYPTION_CONTEXT, self._key, 32)
-        mac_key = crypto_generichash(self.MAC_CONTEXT + nonce, self._key, 32)
+        encryption_key = blake3(self.ENCRYPTION_CONTEXT, key=self._key).digest()
+        mac_key = blake3(self.MAC_CONTEXT + nonce, key=self._key).digest()
 
         ciphertext = crypto_stream_chacha20_ietf_xor(
             plaintext, nonce, encryption_key
         )
 
-        tag = crypto_generichash(aad + ciphertext + len(aad).to_bytes(8, 'little')
-                                 + len(ciphertext).to_bytes(8, 'little'), mac_key, 32)
+        tag = blake3(aad + ciphertext + len(aad).to_bytes(8, 'little')
+                     + len(ciphertext).to_bytes(8, 'little'), key=mac_key).digest()
 
         del encryption_key
         del mac_key
@@ -66,11 +67,11 @@ class ChaCha20Blake2b(object):
                 "The nonce must be exactly %s bytes long" % self.NONCE_SIZE,
             )
 
-        encryption_key = crypto_generichash(self.ENCRYPTION_CONTEXT, self._key, 32)
-        mac_key = crypto_generichash(self.MAC_CONTEXT + nonce, self._key, 32)
+        encryption_key = blake3(self.ENCRYPTION_CONTEXT, key=self._key).digest()
+        mac_key = blake3(self.MAC_CONTEXT + nonce, key=self._key).digest()
 
-        computed_tag = crypto_generichash(aad + ciphertext + len(aad).to_bytes(8, 'little')
-                                          + len(ciphertext).to_bytes(8, 'little'), mac_key, 32)
+        computed_tag = blake3(aad + ciphertext + len(aad).to_bytes(8, 'little')
+                              + len(ciphertext).to_bytes(8, 'little'), key=mac_key).digest()
         del mac_key
 
         if not compare_digest(computed_tag, tag):
